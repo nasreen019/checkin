@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>เช็คชื่อ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  /* ======= แก้ 2 บรรทัดใน <script> ด้านล่าง: LIFF_ID และ API_URL ======= */
+  :root {
+    --green: #06c755; --green-d: #04a646; --red: #e5484d; --amber: #f5a524;
+    --bg: #f4f6f5; --card: #fff; --text: #1d2321; --muted: #6b7570; --line: #e3e8e5;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: 'Sarabun', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 16px; }
+  header { background: var(--green); color: #fff; padding: 16px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; opacity: .9; font-size: 14px; }
+  main { padding: 16px; max-width: 520px; margin: 0 auto; }
+  .card { background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  label.field { display: block; font-weight: 600; margin-bottom: 6px; }
+  select, input[type=text] { width: 100%; font: inherit; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .hint { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+  .member { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .member:last-child { border-bottom: 0; }
+  .name { font-weight: 600; margin-bottom: 8px; }
+  .name small { color: var(--muted); font-weight: 400; margin-right: 6px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .seg button { font: inherit; padding: 10px 0; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; color: var(--muted); }
+  .seg button.on[data-s="มา"] { background: var(--green); border-color: var(--green); color: #fff; }
+  .seg button.on[data-s="ขาด"] { background: var(--red); border-color: var(--red); color: #fff; }
+  .seg button.on[data-s="ลา"] { background: var(--amber); border-color: var(--amber); color: #fff; }
+  .reason { margin-top: 8px; }
+  .tally { display: flex; gap: 8px; justify-content: center; margin: 4px 0 14px; flex-wrap: wrap; }
+  .pill { padding: 4px 12px; border-radius: 99px; font-size: 14px; background: #fff; border: 1px solid var(--line); }
+  .primary { width: 100%; font: inherit; font-weight: 700; font-size: 18px; padding: 14px; border: 0; border-radius: 12px; background: var(--green); color: #fff; }
+  .primary:active { background: var(--green-d); }
+  .primary:disabled { opacity: .5; }
+  .error { background: #fdecec; color: #a61b1f; border-radius: 12px; padding: 14px; }
+  .done { text-align: center; }
+  .done .big { font-size: 48px; }
+  pre { white-space: pre-wrap; text-align: left; background: var(--bg); padding: 12px; border-radius: 10px; font: inherit; font-size: 15px; }
+  .badge { display: inline-block; font-size: 12px; background: #e6f4ea; color: var(--green-d); padding: 2px 8px; border-radius: 99px; margin-left: 6px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📝 เช็คชื่อประจำคาบ</h1>
+  <p id="who">กำลังโหลด…</p>
+</header>
+
+<main>
+  <div id="loading" class="card">กำลังโหลดข้อมูล…</div>
+  <div id="error" class="error" hidden></div>
+
+  <!-- ผูกบัญชีหัวหน้า (ครั้งแรกครั้งเดียว) -->
+  <section id="link" hidden>
+    <div class="card">
+      <p style="margin-top:0"><b>ยืนยันตัวตนหัวหน้ากลุ่ม</b><br>
+        <span class="hint">ทำครั้งแรกครั้งเดียว เลือกห้องและชื่อของตัวเอง</span></p>
+      <label class="field" for="linkRoom">ห้อง</label>
+      <select id="linkRoom"></select>
+      <label class="field" for="linkName" style="margin-top:12px">ฉันคือ</label>
+      <select id="linkName"></select>
+    </div>
+    <button id="linkBtn" class="primary">ยืนยัน</button>
+  </section>
+
+  <!-- ฟอร์มเช็คชื่อ -->
+  <section id="form" hidden>
+    <div class="card">
+      <label class="field" for="period">คาบเรียน</label>
+      <select id="period"></select>
+      <p class="hint" id="periodHint"></p>
+    </div>
+    <div class="card">
+      <p class="hint" style="margin-top:0">ทุกคนเริ่มต้นเป็น "มา" แตะเปลี่ยนเฉพาะคนที่ <b>ขาด</b> หรือ <b>ลา</b></p>
+      <div id="members"></div>
+    </div>
+    <div class="tally" id="tally"></div>
+    <button id="submitBtn" class="primary">ส่งรายชื่อ</button>
+  </section>
+
+  <!-- ส่งเสร็จ -->
+  <section id="done" class="card done" hidden>
+    <div class="big">✅</div>
+    <p><b>ส่งรายชื่อเรียบร้อย</b></p>
+    <pre id="doneMsg"></pre>
+    <p class="hint" id="doneHint"></p>
+    <button id="closeBtn" class="primary">ปิด</button>
+  </section>
+</main>
+
+<script>
+  // ======= ตั้งค่า (แก้ 2 บรรทัดนี้) =======
+  const LIFF_ID = 'ใส่ LIFF ID ที่นี่';
+  const API_URL = 'ใส่ URL ของ Web app ที่นี่';
+  // =======================================
+
+  const $ = id => document.getElementById(id);
+  const state = { token: null, data: null, choices: {} };
+  const SECTIONS = ['loading', 'error', 'link', 'form', 'done'];
+
+  function show(id) { SECTIONS.forEach(s => { $(s).hidden = s !== id; }); }
+  function fail(msg) { $('error').textContent = '⚠️ ' + msg; show('error'); }
+  function el(tag, props = {}, kids = []) {
+    const e = Object.assign(document.createElement(tag), props);
+    kids.forEach(k => e.append(k));
+    return e;
+  }
+
+  async function api(action, extra = {}) {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action, accessToken: state.token }, extra)),
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'เกิดข้อผิดพลาด');
+    return j;
+  }
+
+  async function start() {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+      state.token = liff.getAccessToken();
+      render(await api('init'));
+    } catch (e) { fail(e.message || String(e)); }
+  }
+
+  function render(d) {
+    state.data = d;
+    if (!d.linked) return renderLink(d.slots);
+    $('who').textContent = `${d.leader.room} · กลุ่ม ${d.leader.group} · ${d.leader.name}`;
+    renderForm();
+  }
+
+  // ---------- ผูกบัญชี ----------
+  function renderLink(slots) {
+    $('who').textContent = 'หัวหน้ากลุ่ม';
+    if (!slots.length) return fail('ไม่มีชื่อหัวหน้ากลุ่มที่ว่างอยู่ กรุณาติดต่อครู');
+    const rooms = [...new Set(slots.map(s => s.room))];
+    $('linkRoom').replaceChildren(...rooms.map(r => el('option', { value: r, textContent: r })));
+    const fillNames = () => {
+      const r = $('linkRoom').value;
+      $('linkName').replaceChildren(...slots.filter(s => s.room === r).map(s =>
+        el('option', { value: s.no, textContent: `กลุ่ม ${s.group} · ${s.no} ${s.name}` })));
+    };
+    $('linkRoom').onchange = fillNames;
+    fillNames();
+    $('linkBtn').onclick = async () => {
+      $('linkBtn').disabled = true;
+      try { render(await api('link', { room: $('linkRoom').value, no: $('linkName').value })); }
+      catch (e) { fail(e.message); }
+      finally { $('linkBtn').disabled = false; }
+    };
+    show('link');
+  }
+
+  // ---------- ฟอร์มเช็คชื่อ ----------
+  function renderForm() {
+    const d = state.data;
+    if (!d.periods.length) {
+      return fail('ตอนนี้ยังไม่มีคาบเรียนที่ส่งได้ (เปิดให้ส่งเมื่อใกล้เวลาเริ่มคาบตามตารางสอน)');
+    }
+    $('period').replaceChildren(...d.periods.map(p =>
+      el('option', { value: p.key, textContent: p.label + (p.done ? '  ✓ ส่งแล้ว' : '') })));
+    $('period').onchange = loadPeriod;
+    loadPeriod();
+    show('form');
+  }
+
+  function loadPeriod() {
+    const d = state.data;
+    const key = $('period').value;
+    const p = d.periods.find(x => x.key === key);
+    const prior = d.prior[key] || {};
+    state.choices = {};
+    d.members.forEach(m => {
+      const pr = prior[m.no];
+      state.choices[m.no] = { status: pr ? pr.status : 'มา', reason: pr ? pr.reason : '' };
+    });
+    $('periodHint').textContent = `เวลา ${p.time}` + (p.done ? ' · ส่งแล้ว ส่งใหม่เพื่อแก้ไขได้' : '');
+    $('submitBtn').textContent = p.done ? 'ส่งแก้ไข' : 'ส่งรายชื่อ';
+    renderMembers();
+  }
+
+  function renderMembers() {
+    const box = $('members');
+    box.replaceChildren(...state.data.members.map(m => {
+      const c = state.choices[m.no];
+      const seg = el('div', { className: 'seg' }, ['มา', 'ขาด', 'ลา'].map(s => {
+        const b = el('button', { type: 'button', textContent: s, className: c.status === s ? 'on' : '' });
+        b.dataset.s = s;
+        b.onclick = () => { c.status = s; renderMembers(); };
+        return b;
+      }));
+      const kids = [el('div', { className: 'name' }, [el('small', { textContent: 'เลขที่ ' + m.no }), m.name]), seg];
+      if (c.status === 'ลา') {
+        const inp = el('input', { type: 'text', className: 'reason', placeholder: 'เหตุผลการลา เช่น ป่วย, ธุระครอบครัว', value: c.reason || '', maxLength: 100 });
+        inp.oninput = () => { c.reason = inp.value; };
+        kids.push(inp);
+      }
+      return el('div', { className: 'member' }, kids);
+    }));
+    const vals = Object.values(state.choices);
+    const n = s => vals.filter(v => v.status === s).length;
+    $('tally').replaceChildren(
+      el('span', { className: 'pill', textContent: `✅ มา ${n('มา')}` }),
+      el('span', { className: 'pill', textContent: `❌ ขาด ${n('ขาด')}` }),
+      el('span', { className: 'pill', textContent: `📝 ลา ${n('ลา')}` }));
+  }
+
+  $('submitBtn').onclick = async () => {
+    const btn = $('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'กำลังส่ง…';
+    try {
+      const records = Object.entries(state.choices).map(([no, c]) => ({ no, status: c.status, reason: c.reason }));
+      const res = await api('submit', { key: $('period').value, records });
+      $('doneMsg').textContent = res.message;
+      $('doneHint').textContent = '';
+      const ctx = liff.getContext && liff.getContext();
+      if (liff.isInClient() && ctx && (ctx.type === 'group' || ctx.type === 'room')) {
+        try {
+          await liff.sendMessages([{ type: 'text', text: res.message }]);
+          $('doneHint').textContent = 'ส่งข้อความแจ้งในกลุ่มแล้ว';
+        } catch (_) {
+          $('doneHint').textContent = 'บันทึกแล้ว แต่ส่งข้อความเข้ากลุ่มไม่สำเร็จ';
+        }
+      } else {
+        $('doneHint').textContent = 'บันทึกแล้ว (เปิดฟอร์มจากในกลุ่มไลน์ เพื่อให้ข้อความแจ้งในกลุ่ม)';
+      }
+      show('done');
+    } catch (e) {
+      alert(e.message);
+      btn.disabled = false;
+      btn.textContent = 'ส่งรายชื่อ';
+    }
+  };
+
+  $('closeBtn').onclick = () => { if (liff.isInClient()) liff.closeWindow(); else window.close(); };
+
+  start();
+</script>
+</body>
+</html>
